@@ -2,11 +2,6 @@
 
 {% block content %}
     <h1>Parlays</h1>
-    {% if user %}
-        <p>Welcome, {{user.Username}}</p>
-    {% else %}
-        <p>Sign in to edit your parlays</p>
-    {% endif %}
 
     {% for date in dates %}
         <div class="accordion" id="parlaysAccordion">
@@ -14,7 +9,7 @@
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="heading-{{ loop.index }}">
                         <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ loop.index }}" aria-expanded="true" aria-controls="collapse-{{ loop.index }}">
-                            <span class="text-primary">{{ parlay.user.Username }}</span>
+                            <span class="text-primary">{{ parlay.user.username }}</span>
                             <span class="text-body mx-1">bet</span>
                             <span class="text-success">${{ parlay.wager }}</span>
                             <span class="text-body mx-1">on</span>
