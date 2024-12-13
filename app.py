@@ -1,15 +1,224 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request, redirect, url_for, flash
 import os
 from dotenv import load_dotenv
+import json
+from werkzeug.security import check_password_hash, generate_password_hash
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+import datetime
+from iformat import iprint
+from math import prod
+
+matchups = [
+    {"Home": "Team A", "Away": "Team B"},
+    {"Home": "Team C", "Away": "Team D"},
+    {"Home": "Team E", "Away": "Team F"},
+    {"Home": "Team G", "Away": "Team H"}
+]
+
+def am_to_dec(am_odds):
+    if am_odds > 0:
+        return 1 + (am_odds / 100)
+    else:
+        return 1 + (100 / abs(am_odds))
+
+def dec_to_am(dec_odds):
+    if dec_odds > 2:
+        return round((dec_odds - 1) * 100)
+    else:
+        return round(-100 / (dec_odds - 1))
+
+def calculate_dec_odds(odds):
+    return prod([am_to_dec(o) for o in odds])
+
+def format_am_odds(odds):
+    return f"{('+' if odds > 0 else '')}{round(odds)}"
+
+class DisplayableMatchup:
+    def __init__(self, matchup):
+        self.date = matchup.Datetime.strftime("%m/%d/%Y")
+        self.time = matchup.Datetime.strftime("%I:%M %p")
+        self.home = matchup.Home
+        self.away = matchup.Away
+
+class DisplayableBet:
+    def __init__(self, bet):
+        self.category = bet.Category
+        self.details = bet.Details
+        self.raw_odds = bet.Odds
+        self.odds = format_am_odds(bet.Odds)
+
+class DisplayableParlay:
+    def __init__(self, parlay):
+        self.user = db.session.get(User, parlay.UserId)
+        self.wager = parlay.Wager
+        self.bets = [DisplayableBet(b) for b in db.session.query(Bet).filter(Bet.BetId.in_([parlay.BetId1, parlay.BetId2, parlay.BetId3])).all()]
+        self.matchup = DisplayableMatchup(db.session.get(Matchup, parlay.MatchupId))
+        self.dec_odds = calculate_dec_odds([b.raw_odds for b in self.bets])
+        self.odds = format_am_odds(dec_to_am(self.dec_odds))
+        self.percent = round((1 / self.dec_odds) * 100, 1)
+        self.payout = round(self.wager * self.dec_odds, 2)
+        self.win = self.payout - self.wager
+
+    def __str__(self):
+        return f"{self.user.Username} bet {self.wager} on {self.matchup.home} vs {self.matchup.away} at {self.matchup.time} on {self.matchup.date}."
+    
+    def __repr__(self):
+        return self.__str__()
 
 app = Flask(__name__)
 
 load_dotenv()
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 
-@app.route('/')
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db = SQLAlchemy(app)
+login_manager = LoginManager(app)
+login_manager.login_view = "login"
+
+class User(UserMixin, db.Model):
+    UserId = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    Username = db.Column(db.String(80), unique=True, nullable=False)
+    Password = db.Column(db.String(200), nullable=False)
+
+    def get_id(self):
+        return self.UserId
+
+class Bet(db.Model):
+    BetId = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    Category = db.Column(db.String(80), nullable=False)
+    Details = db.Column(db.String(200), nullable=False)
+    Odds = db.Column(db.Float, nullable=False)
+
+class Parlay(db.Model):
+    ParlayId = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    Datetime = db.Column(db.DateTime, nullable=False)
+    UserId = db.Column(db.Integer, db.ForeignKey('user.UserId'), nullable=False)
+    MatchupId = db.Column(db.Integer, db.ForeignKey('matchup.MatchupId'), nullable=False)
+    Wager = db.Column(db.Float, nullable=False)
+    BetId1 = db.Column(db.Integer, db.ForeignKey('bet.BetId'), nullable=False)
+    BetId2 = db.Column(db.Integer, db.ForeignKey('bet.BetId'), nullable=False)
+    BetId3 = db.Column(db.Integer, db.ForeignKey('bet.BetId'), nullable=False)
+
+class Matchup(db.Model):
+    MatchupId = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    Datetime = db.Column(db.DateTime, nullable=False)
+    Home = db.Column(db.String(80), nullable=False)
+    Away = db.Column(db.String(80), nullable=False)
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.filter_by(UserId=user_id).first()
+
+with app.app_context():
+    db.create_all()
+
+    db.session.query(Matchup).delete()
+    db.session.commit()
+
+    for matchup in matchups:
+        new_matchup = Matchup(Datetime=datetime.datetime.now(), Home=matchup["Home"], Away=matchup["Away"])
+        db.session.add(new_matchup)
+        db.session.commit()
+
+def sanitize(s):
+    return s.replace("'", "").replace('"', "").replace(";", "")
+
+@app.route("/")
 def home():
-    return render_template('index.html')
+    return render_template("index.html")
 
-if __name__ == '__main__':
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        user = "".join(c for c in request.form.get("username").lower() if c.isalnum())
+        password = request.form.get("password")
+
+        if not user or not password:
+            return render_template("login.html", error="Please fill out all the fields")
+
+        user_record = User.query.filter_by(Username=user).first()
+
+        if user_record:
+            if not user_record.Password:
+                user_record.Password = generate_password_hash(password)
+                db.session.commit()
+                flash("Your password was (re)set.", category="success")
+            elif check_password_hash(user_record.Password, password):
+                login_user(user_record)
+                return redirect(url_for("parlays"))
+            else:
+                return render_template("login.html", error="Incorrect password.\nIf you were creating a new account, this username is already taken.")
+        elif sanitize(password) != password:
+                return render_template("login.html", error="Passwords may not contain '\";.")
+        else:
+            new_user = User(Username=user, Password=generate_password_hash(password))
+            db.session.add(new_user)
+            db.session.commit()
+            login_user(new_user)
+            flash(f"Account created with username {user}.", category="success")
+            return redirect(url_for("parlays"))
+    else:
+        return render_template("login.html")
+
+@app.route("/parlays")
+def parlays():
+    user = None
+    if current_user.is_authenticated:
+        user = current_user
+
+    parlays = [DisplayableParlay(p) for p in Parlay.query.group_by(Parlay.Datetime).all()]
+    print(parlays)
+
+    return render_template("parlays.html", user=user, dates=[parlays])
+
+@app.route("/parlays/new", methods=["GET", "POST"])
+def new_parlay():
+
+    if request.method == "POST":
+        user = current_user
+        if not user:
+            return redirect(url_for("login"))
+
+        matchup = request.form.get("matchup")
+        wager = request.form.get("wager")
+        bet1_category = request.form.get("bet1_category")
+        bet1_details = request.form.get("bet1_details")
+        bet1_odds = request.form.get("bet1_odds")
+        bet2_category = request.form.get("bet2_category")
+        bet2_details = request.form.get("bet2_details")
+        bet2_odds = request.form.get("bet2_odds")
+        bet3_category = request.form.get("bet3_category")
+        bet3_details = request.form.get("bet3_details")
+        bet3_odds = request.form.get("bet3_odds")
+
+        if not all([matchup, wager, bet1_category, bet1_details, bet1_odds, bet2_category, bet2_details, bet2_odds, bet3_category, bet3_details, bet3_odds]):
+            return render_template("new.html", matchups=Matchup.query.all(), error="Please fill out all the fields")
+        
+        bet1 = Bet(Category=bet1_category, Details=bet1_details, Odds=bet1_odds)
+        bet2 = Bet(Category=bet2_category, Details=bet2_details, Odds=bet2_odds)
+        bet3 = Bet(Category=bet3_category, Details=bet3_details, Odds=bet3_odds)
+
+        db.session.add(bet1)
+        db.session.add(bet2)
+        db.session.add(bet3)
+        db.session.commit()
+
+        new_parlay = Parlay(Datetime=datetime.datetime.now(), UserId=user.UserId, MatchupId=matchup, Wager=wager, BetId1=bet1.BetId, BetId2=bet2.BetId, BetId3=bet3.BetId)
+        db.session.add(new_parlay)
+        db.session.commit()
+        return redirect(url_for("parlays"))
+    else:
+        bets = Bet.query.all()
+        return render_template("new.html", matchups=Matchup.query.all())
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("home"))
+
+if __name__ == "__main__":
     app.run(debug=True)
