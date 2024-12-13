@@ -34,6 +34,11 @@ def calculate_dec_odds(odds):
 def format_am_odds(odds):
     return f"{('+' if odds > 0 else '')}{round(odds)}"
 
+class DisplayableUsername:
+    def __init__(self, user, current_user=None):
+        self.id = user.UserId
+        self.username = user.Username if user != current_user else "You"
+
 class DisplayableMatchup:
     def __init__(self, matchup):
         self.date = matchup.Datetime.strftime("%m/%d/%Y")
@@ -49,8 +54,8 @@ class DisplayableBet:
         self.odds = format_am_odds(bet.Odds)
 
 class DisplayableParlay:
-    def __init__(self, parlay):
-        self.user = db.session.get(User, parlay.UserId)
+    def __init__(self, parlay, current_user=None):
+        self.user = DisplayableUsername(db.session.get(User, parlay.UserId), current_user)
         self.wager = parlay.Wager
         self.bets = [DisplayableBet(b) for b in db.session.query(Bet).filter(Bet.BetId.in_([parlay.BetId1, parlay.BetId2, parlay.BetId3])).all()]
         self.matchup = DisplayableMatchup(db.session.get(Matchup, parlay.MatchupId))
@@ -61,7 +66,7 @@ class DisplayableParlay:
         self.win = self.payout - self.wager
 
     def __str__(self):
-        return f"{self.user.Username} bet {self.wager} on {self.matchup.home} vs {self.matchup.away} at {self.matchup.time} on {self.matchup.date}."
+        return f"{self.user.username} bet {self.wager} on {self.matchup.home} vs {self.matchup.away} at {self.matchup.time} on {self.matchup.date}."
     
     def __repr__(self):
         return self.__str__()
@@ -169,7 +174,7 @@ def parlays():
     if current_user.is_authenticated:
         user = current_user
 
-    parlays = [DisplayableParlay(p) for p in Parlay.query.group_by(Parlay.Datetime).all()]
+    parlays = [DisplayableParlay(p, current_user) for p in Parlay.query.group_by(Parlay.Datetime).all()]
     print(parlays)
 
     return render_template("parlays.html", user=user, dates=[parlays])
