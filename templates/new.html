@@ -1,0 +1,72 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<h2 class="my-4">Create a parlay</h2>
+<form method="post" action="/parlays/new">
+    {% if error %}
+    <div class="alert alert-danger" role="alert">
+        {{ error }}
+    </div>
+    {% endif %}
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <label for="matchup" class="form-label">Matchup:</label>
+            <select class="form-control selectpicker bg-dark" data-style="bg-dark border" id="matchup" name="matchup" data-live-search="true">
+                {% for matchup in matchups %}
+                    <option value="{{ matchup.MatchupId }}" data-tokens="{{ matchup.Home }} {{ matchup.Away }}">{{ matchup.Away }} @ {{ matchup.Home }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="wager" class="form-label">Wager:</label>
+            <input type="text" class="form-control" id="wager" name="wager">
+        </div>
+    </div>
+    <div class="row mb-3">
+        <div class="col-md-5">
+            <label for="bet1_category" class="form-label">Bet 1 Category:</label>
+            <input type="text" class="form-control" id="bet1_category" name="bet1_category">
+        </div>
+        <div class="col-md-5">
+            <label for="bet1_details" class="form-label">Bet 1 Details:</label>
+            <input type="text" class="form-control" id="bet1_details" name="bet1_details">
+        </div>
+        <div class="col-md-2">
+            <label for="bet1_odds" class="form-label">Bet 1 Odds:</label>
+            <input type="text" class="form-control" id="bet1_odds" name="bet1_odds">
+        </div>
+    </div>
+    <div class="row mb-3">
+        <div class="col-md-5">
+            <label for="bet2_category" class="form-label">Bet 2 Category:</label>
+            <input type="text" class="form-control" id="bet2_category" name="bet2_category">
+        </div>
+        <div class="col-md-5">
+            <label for="bet2_details" class="form-label">Bet 2 Details:</label>
+            <input type="text" class="form-control" id="bet2_details" name="bet2_details">
+        </div>
+        <div class="col-md-2">
+            <label for="bet2_odds" class="form-label">Bet 2 Odds:</label>
+            <input type="text" class="form-control" id="bet2_odds" name="bet2_odds">
+        </div>
+    </div>
+    <div class="row mb-3">
+        <div class="col-md-5">
+            <label for="bet3_category" class="form-label">Bet 3 Category:</label>
+            <input type="text" class="form-control" id="bet3_category" name="bet3_category">
+        </div>
+        <div class="col-md-5">
+            <label for="bet3_details" class="form-label">Bet 3 Details:</label>
+            <input type="text" class="form-control" id="bet3_details" name="bet3_details">
+        </div>
+        <div class="col-md-2">
+            <label for="bet3_odds" class="form-label">Bet 3 Odds:</label>
+            <input type="text" class="form-control" id="bet3_odds" name="bet3_odds">
+        </div>
+    </div>
+    </div>
+    <div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </div>
+</form>
+{% endblock %}
