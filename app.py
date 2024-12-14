@@ -138,16 +138,6 @@ def load_user(user_id):
 with app.app_context():
     db.create_all()
 
-    if input("Reset matchups database?").lower() in ["y", "yes"]:
-        db.session.query(Matchup).delete()
-        db.session.commit()
-
-    if input("Add matchups?").lower() in ["y", "yes"]:
-        for matchup in matchups:
-            new_matchup = Matchup(Datetime=dt.datetime.strftime("2024-12-14 " + matchup["Datestr"], "%Y-%m-%d %I:%M %p"), Home=matchup["Home"], Away=matchup["Away"])
-            db.session.add(new_matchup)
-            db.session.commit()
-
 def sanitize(s):
     return s.replace("'", "").replace('"', "").replace(";", "")
 
@@ -233,6 +223,12 @@ def new_parlay():
             print(f"{type(e)}{e}")
             return render_template("new.html", matchups=Matchup.query.all(), error="Wager and bet odds must be a numbers. Odds cannot be between -100 and 100.")
         
+        if wager <= 0:
+            return render_template("new.html", matchups=Matchup.query.all(), error="Wager must be greater than 0.")
+        
+        if Matchup.query.filter_by(MatchupId = matchup).first().Datetime < dt.datetime.now():
+            return render_template("new.html", matchups=Matchup.query.all(), error="Matchup has already started.")
+        
         bet1 = Bet(Category=sanitize(bet1_category), Details=sanitize(bet1_details), Odds=bet1_odds)
         bet2 = Bet(Category=sanitize(bet2_category), Details=sanitize(bet2_details), Odds=bet2_odds)
         bet3 = Bet(Category=sanitize(bet3_category), Details=sanitize(bet3_details), Odds=bet3_odds)
@@ -256,4 +252,21 @@ def logout():
     return redirect(url_for("home"))
 
 if __name__ == "__main__":
+    with app.app_context():
+        if input("Reset matchups database?").lower() in ["y", "yes"]:
+            db.session.query(Matchup).delete()
+            db.session.commit()
+
+        if input("Add matchups?").lower() in ["y", "yes"]:
+            for matchup in matchups:
+                new_matchup = Matchup(Datetime=dt.datetime.strptime("2024-12-14 " + matchup["Datestr"], "%Y-%m-%d %I:%M %p"), Home=matchup["Home"], Away=matchup["Away"])
+                db.session.add(new_matchup)
+                db.session.commit()
+
+            new_matchup = Matchup(Datetime=dt.datetime.strptime("2024-12-13 11:00 am", "%Y-%m-%d %I:%M %p"), Home="Old Test", Away="Old Test")
+            db.session.add(new_matchup)
+            db.session.commit()
+
     app.run(debug=True)
+
+    
