@@ -11,62 +11,112 @@
     <div class="row mb-3">
         <div class="col-md-8">
             <label for="matchup" class="form-label">Matchup:</label>
-            <select class="form-control selectpicker bg-dark" data-style="bg-dark border" id="matchup" name="matchup" data-live-search="true">
+            <select class="form-control selectpicker bg-dark" required data-style="bg-dark border" id="matchup" name="matchup" data-live-search="true">
                 {% for matchup in matchups %}
                     <option value="{{ matchup.MatchupId }}" data-tokens="{{ matchup.Home }} {{ matchup.Away }}">{{ matchup.Away }} @ {{ matchup.Home }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="col-md-4">
-            <label for="wager" class="form-label">Wager:</label>
-            <input type="text" class="form-control" id="wager" name="wager">
+                <label for="wager" class="form-label">Wager:</label>
+                <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input type="number" class="form-control" id="wager" name="wager" value="5" required>
+                </div>
         </div>
     </div>
-    <div class="row mb-3">
-        <div class="col-md-5">
-            <label for="bet1_category" class="form-label">Bet 1 Category:</label>
-            <input type="text" class="form-control" id="bet1_category" name="bet1_category">
+    {% set placeholders_list = [['Anytime goal', 'Tage Thompson', '+160'], ['1st period goals', 'Under 2.5', '-320'], ['Total shots (Trochek)', '3+', '-105']] %}
+    {% for i in range(placeholders_list|length) %}
+        {% set placeholders = placeholders_list[i] %}
+        <div class="row mb-3">
+            <div class="col-md-5">
+                <label for="bet{{ i+1 }}_category" class="form-label">Bet {{ i+1 }} Category:</label>
+                <input type="text" class="form-control" id="bet{{ i+1 }}_category" name="bet{{ i+1 }}_category" placeholder="{{ placeholders[0] }}" required>
+            </div>
+            <div class="col-md-5">
+                <label for="bet{{ i+1 }}_details" class="form-label">Bet {{ i+1 }} Details:</label>
+                <input type="text" class="form-control" id="bet{{ i+1 }}_details" name="bet{{ i+1 }}_details" placeholder="{{ placeholders[1] }}">
+            </div>
+            <div class="col-md-2">
+                <label for="bet{{ i+1 }}_odds" class="form-label">Bet {{ i+1 }} Odds:</label>
+                <input type="number" class="form-control" id="bet{{ i+1 }}_odds" name="bet{{ i+1 }}_odds" placeholder="{{ placeholders[2] }}" required oninput="validateAmOdds(this)">
+            </div>
         </div>
-        <div class="col-md-5">
-            <label for="bet1_details" class="form-label">Bet 1 Details:</label>
-            <input type="text" class="form-control" id="bet1_details" name="bet1_details">
+    {% endfor %}
+    <div class="row">
+        <div class="col-12 col-sm-5 col-md-4 col-lg-3 d-flex align-items-center justify-content-start mb-2">
+            <label for="overall_odds" class="form-label me-2 mb-0 flex-shrink-0">Overall Odds:</label>
+            <input type="text" class="form-control border-primary" id="overall_odds" name="overall_odds" readonly>
         </div>
-        <div class="col-md-2">
-            <label for="bet1_odds" class="form-label">Bet 1 Odds:</label>
-            <input type="text" class="form-control" id="bet1_odds" name="bet1_odds">
-        </div>
-    </div>
-    <div class="row mb-3">
-        <div class="col-md-5">
-            <label for="bet2_category" class="form-label">Bet 2 Category:</label>
-            <input type="text" class="form-control" id="bet2_category" name="bet2_category">
-        </div>
-        <div class="col-md-5">
-            <label for="bet2_details" class="form-label">Bet 2 Details:</label>
-            <input type="text" class="form-control" id="bet2_details" name="bet2_details">
-        </div>
-        <div class="col-md-2">
-            <label for="bet2_odds" class="form-label">Bet 2 Odds:</label>
-            <input type="text" class="form-control" id="bet2_odds" name="bet2_odds">
-        </div>
-    </div>
-    <div class="row mb-3">
-        <div class="col-md-5">
-            <label for="bet3_category" class="form-label">Bet 3 Category:</label>
-            <input type="text" class="form-control" id="bet3_category" name="bet3_category">
-        </div>
-        <div class="col-md-5">
-            <label for="bet3_details" class="form-label">Bet 3 Details:</label>
-            <input type="text" class="form-control" id="bet3_details" name="bet3_details">
-        </div>
-        <div class="col-md-2">
-            <label for="bet3_odds" class="form-label">Bet 3 Odds:</label>
-            <input type="text" class="form-control" id="bet3_odds" name="bet3_odds">
+        <div class="col-12 col-sm-5 col-md-4 col-lg-3 d-flex align-items-center justify-content-start mb-2">
+            <label for="to_win" class="form-label me-2 mb-0 flex-shrink-0">To Win:</label>
+            <input type="text" class="form-control border-success" id="to_win" name="to_win" readonly>
         </div>
     </div>
-    </div>
-    <div>
-        <button type="submit" class="btn btn-primary">Submit</button>
-    </div>
+    <button type="button" class="btn btn-secondary" onclick="checkOdds()">Check Odds</button>
+    <button type="submit" class="btn btn-primary">Submit</button>
 </form>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        function validateAmOdds(input) {
+            if (input.value < 100 && input.value > -100) {
+                input.setCustomValidity('Odds cannot be between -100 and 100');
+            } else {
+                input.setCustomValidity('');
+            }
+        }
+
+        function amToDec(amOdds) {
+            if (amOdds > 0) {
+                return 1 + (amOdds / 100);
+            } else {
+                return 1 + (100 / Math.abs(amOdds));
+            }
+        }
+
+        function decToAm(decOdds) {
+            if (decOdds > 2) {
+                return Math.round((decOdds - 1) * 100);
+            } else {
+                return Math.round(-100 / (decOdds - 1));
+            }
+        }
+
+        function calculateDecOdds(odds) {
+            return odds.reduce((acc, o) => acc * amToDec(o), 1);
+        }
+
+        function formatAmOdds(odds) {
+            return `${odds > 0 ? '+' : ''}${Math.round(odds)}`;
+        }
+
+        function calcParlayInfo(rawOdds, wager) {
+            const decOdds = calculateDecOdds(rawOdds);
+            const odds = formatAmOdds(decToAm(decOdds));
+            const percent = Math.round((1 / decOdds) * 1000) / 10;
+            const payout = Math.round(wager * decOdds * 100) / 100;
+            const win = Math.round((payout - wager) * 100) / 100;
+            return { decOdds, odds, percent, payout, win };
+        }
+
+        function checkOdds() {
+            const odds = [];
+            for (let i = 1; i <= 3; i++) {
+                const odd = parseFloat(document.getElementById(`bet${i}_odds`).value);
+                if (!isNaN(odd)) {
+                    odds.push(odd);
+                }
+            }
+            const wager = parseFloat(document.getElementById('wager').value);
+            if (odds.length > 0 && !isNaN(wager)) {
+                const { odds: amOdds, payout, win } = calcParlayInfo(odds, wager);
+                document.getElementById('overall_odds').value = amOdds;
+                document.getElementById('to_win').value = win.toFixed(2);
+            } else {
+                alert('Please enter valid odds and wager.');
+            }
+        }
+    </script>
 {% endblock %}
