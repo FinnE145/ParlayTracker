@@ -22,15 +22,76 @@
                     <div id="collapse-{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ loop.index }}" data-bs-parent="#parlaysAccordion">
                         <div class="accordion-body">
                             {% for bet in parlay.bets %}
-                                <div class="border border-secondary rounded p-2 mb-1 d-inline-block">{{ bet.category }}: {{ bet.details }} at {{ bet.odds }}</div>
+                                <div id="bet-{{ parlay.id }}-{{ bet.id }}" class="{% if bet.success == None %}border border-secondary{% elif not bet.success %}text-bg-danger{% else %}text-bg-success{% endif %} rounded p-2 mb-1 d-inline-block">{{ bet.category }}: {{ bet.details }} at {{ bet.odds }}</div>
+                                {% if current_user.UserId == parlay.user.id %}
+                                    <button type="button" class="btn btn-outline-success ms-1 mb-2 p-1 px-2" onclick="updateBetStatus('{{ parlay.id }}', '{{ bet.id }}', 'T')"><i class="bi bi-check-lg"></i></button>
+                                    <button type="button" class="btn btn-outline-danger ms-1 mb-2 p-1 px-2" onclick="updateBetStatus('{{ parlay.id }}', '{{ bet.id }}', 'F')"><i class="bi bi-x-lg"></i></button>
+                                    <button type="button" class="btn btn-outline-secondary ms-1 mb-2 p-1 px-2" onclick="updateBetStatus('{{ parlay.id }}', '{{ bet.id }}', 'N')"><i class="bi bi-arrow-counterclockwise"></i></button>
+                                {% endif %}
                                 <br>
                             {% endfor %}
                             Total odds: <div class="d-sm-inline-block border border-primary rounded p-2">{{ parlay.odds }} ({{ parlay.percent }}%)</div>
-                            To win: <div class="d-sm-inline-block border border-success rounded p-2">${{ "%0.2f" % parlay.win }}</div>
+                            To win: <div id="win-{{ parlay.id }}" class="d-sm-inline-block {% if parlay.success == None %}border border-secondary{% elif not parlay.success %}text-bg-danger{% else %}text-bg-success{% endif %} rounded p-2">${{ "%0.2f" % parlay.win }}</div>
                         </div>
                     </div>
                 </div>
             {% endfor %}
         </div>
     {% endfor %}
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        function updateBetStatus(parlayId, betId, betStatus) {
+            fetch(`/parlays/status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    id: betId,
+                    success: betStatus
+                })
+            })
+            .then(response => {
+                betStatus = betStatus === 'T' ? true : betStatus === 'F' ? false : null;
+                if (response.status === 200) {
+                    const betElement = document.getElementById(`bet-${parlayId}-${betId}`);
+                    betElement.classList.remove('border-secondary', 'text-bg-danger', 'text-bg-success');
+                    if (betStatus === null) {
+                        betElement.classList.add('border', 'border-secondary');
+                    } else {
+                        betElement.classList.add(betStatus ? 'text-bg-success' : 'text-bg-danger');
+                    }
+
+                    let successes = [];
+                    for (let bet of document.querySelectorAll(`[id^=bet-${parlayId}-]`)) {
+                        if (bet.classList.contains('text-bg-success')) {
+                            successes.push(true);
+                        } else if (bet.classList.contains('text-bg-danger')) {
+                            successes.push(false);
+                        } else {
+                            successes.push(null);
+                        }
+                    }
+
+                    const winElement = document.getElementById(`win-${parlayId}`);
+                    winElement.classList.remove('border-secondary', 'text-bg-danger', 'text-bg-success');
+                    if (successes.includes(false)) {
+                        winElement.classList.add('text-bg-danger');
+                    } else if (successes.includes(null)) {
+                        winElement.classList.add('border', 'border-secondary');
+                    } else {
+                        winElement.classList.add('text-bg-success');
+                    }
+
+                } else {
+                    alert('An error occurred: ' + response.status);
+                }
+            })
+            .catch(error => {
+                alert('An error occurred: ' + error.message);
+            });
+        }
+    </script>
 {% endblock %}
