@@ -40,7 +40,7 @@
             </div>
             <div class="col-md-2">
                 <label for="bet{{ i+1 }}_odds" class="form-label">Bet {{ i+1 }} Odds:</label>
-                <input type="number" class="form-control" id="bet{{ i+1 }}_odds" name="bet{{ i+1 }}_odds" placeholder="{{ placeholders[2] }}" value="{{ parlay.bets[i].odds }}" required oninput="validateAmOdds(this)">
+                <input type="number" class="form-control" id="bet{{ i+1 }}_odds" name="bet{{ i+1 }}_odds" placeholder="{{ placeholders[2] }}" value="{{ parlay.bets[i].odds.replace('+', '') }}" required oninput="validateAmOdds(this)">
             </div>
         </div>
     {% endfor %}
