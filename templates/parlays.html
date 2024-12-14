@@ -21,6 +21,10 @@
                     </h2>
                     <div id="collapse-{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ loop.index }}" data-bs-parent="#parlaysAccordion">
                         <div class="accordion-body">
+                            {% if current_user.UserId == parlay.user.id %}
+                                <a class="btn btn-outline-primary mb-1" href="/parlays/edit/{{ parlay.id }}">Edit parlay <i class="bi bi-pencil"></i></a>
+                                <br>
+                            {% endif %}
                             {% for bet in parlay.bets %}
                                 <div id="bet-{{ parlay.id }}-{{ bet.id }}" class="{% if bet.success == None %}border border-secondary{% elif not bet.success %}text-bg-danger{% else %}text-bg-success{% endif %} rounded p-2 mb-1 d-inline-block">{{ bet.category }}: {{ bet.details }} at {{ bet.odds }}</div>
                                 {% if current_user.UserId == parlay.user.id %}
