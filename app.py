@@ -105,6 +105,7 @@ class DisplayableUsername:
 
 class DisplayableMatchup:
     def __init__(self, matchup:Matchup):
+        self.id = matchup.MatchupId
         self.date = matchup.Datetime.astimezone().strftime("%m/%d/%Y")
         self.time = matchup.Datetime.astimezone().strftime("%I:%M %p")
         self.home = matchup.Home
@@ -255,6 +256,75 @@ def new_parlay():
         return redirect(url_for("parlays"))
     else:
         return render_template("new.html", matchups=Matchup.query.all())
+    
+@app.route("/parlays/edit/<int:parlay_id>", methods=["GET", "POST"])
+def edit_parlay(parlay_id):
+    try:
+        parlay_id = int(parlay_id)
+    except ValueError:
+        return render_template("edit.html", matchups=Matchup.query.all(), parlay=DisplayableParlay(Parlay.query.filter_by(ParlayId=parlay_id).first()), error="Invalid parlay id.")
+    
+    disParlay = DisplayableParlay(Parlay.query.filter_by(ParlayId=parlay_id).first())
+
+    if request.method == "POST":
+        user = current_user
+        if not user:
+            return redirect(url_for("login"))
+
+        matchup = request.form.get("matchup")
+        wager = request.form.get("wager")
+        bet1_category = request.form.get("bet1_category")
+        bet1_details = request.form.get("bet1_details")
+        bet1_odds = request.form.get("bet1_odds")
+        bet2_category = request.form.get("bet2_category")
+        bet2_details = request.form.get("bet2_details")
+        bet2_odds = request.form.get("bet2_odds")
+        bet3_category = request.form.get("bet3_category")
+        bet3_details = request.form.get("bet3_details")
+        bet3_odds = request.form.get("bet3_odds")
+
+        if not all([matchup, wager, bet1_category, bet1_details, bet1_odds, bet2_category, bet2_details, bet2_odds, bet3_category, bet3_details, bet3_odds]):
+            return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay, error="Please fill out all the fields")
+        
+        try:
+            wager = float(wager)
+            bet1_odds = float(bet1_odds)
+            bet2_odds = float(bet2_odds)
+            bet3_odds = float(bet3_odds)
+            assert not (-100 < bet1_odds < 100 and -100 < bet2_odds < 100 and -100 < bet3_odds < 100), "Odds cannot be between -100 and +100."
+        except (ValueError, AssertionError) as e:
+            #print(f"{type(e)}{e}")
+            return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay, error="Wager and bet odds must be a numbers. Odds cannot be between -100 and 100.")
+        
+        if wager <= 0:
+            return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay, error="Wager must be greater than 0.")
+        
+        localtz = dt.timezone(dt.timedelta(hours=-7))
+        matchup_time = Matchup.query.filter_by(MatchupId = matchup).first().Datetime.astimezone(localtz)
+        current_time = dt.datetime.now(localtz)
+        #print(matchup_time, current_time)
+        if matchup_time < current_time:
+            return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay, error="Matchup has already started.")
+        
+        bet1 = Bet(Category=sanitize(bet1_category), Details=sanitize(bet1_details), Odds=bet1_odds)
+        bet2 = Bet(Category=sanitize(bet2_category), Details=sanitize(bet2_details), Odds=bet2_odds)
+        bet3 = Bet(Category=sanitize(bet3_category), Details=sanitize(bet3_details), Odds=bet3_odds)
+
+        db.session.add(bet1)
+        db.session.add(bet2)
+        db.session.add(bet3)
+        db.session.commit()
+
+        old_parlay = Parlay.query.filter_by(ParlayId=parlay_id).first()
+        old_parlay.MatchupId = matchup
+        old_parlay.Wager = wager
+        old_parlay.BetId1 = bet1.BetId
+        old_parlay.BetId2 = bet2.BetId
+        old_parlay.BetId3 = bet3.BetId
+        db.session.commit()
+        return redirect(url_for("parlays"))
+    else:
+        return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay)
     
 @app.route("/parlays/status", methods=["POST"])
 @login_required
