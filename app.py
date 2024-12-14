@@ -5,16 +5,71 @@ import json
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-import datetime
+import datetime as dt
 from iformat import iprint
 from math import prod
 
+# dt.datetime.now(dt.timezone.utc)
+
 matchups = [
-    {"Home": "Team A", "Away": "Team B"},
-    {"Home": "Team C", "Away": "Team D"},
-    {"Home": "Team E", "Away": "Team F"},
-    {"Home": "Team G", "Away": "Team H"}
+    {"Home": "New Jersey Devils", "Away": "Chicago Blackhawks", "Datestr": "11:00 am"},
+    {"Home": "New York Rangers", "Away": "Los Angeles Kings", "Datestr": "11:00 am"},
+    {"Home": "Minnesota Wild", "Away": "Philadelphia Flyers", "Datestr": "12:00 pm"},
+    {"Home": "Edmonton Oilers", "Away": "Vegas Golden Knights", "Datestr": "2:00 pm"},
+    {"Home": "Ottawa Senators", "Away": "Pittsburgh Penguins", "Datestr": "5:00 pm"},
+    {"Home": "Detroit Red Wings", "Away": "Toronto Maple Leafs", "Datestr": "5:00 pm"},
+    {"Home": "Washington Capitals", "Away": "Buffalo Sabres", "Datestr": "5:00 pm"},
+    {"Home": "Columbus Blue Jackets", "Away": "Anaheim Ducks", "Datestr": "5:00 pm"},
+    {"Home": "Winnipeg Jets", "Away": "Montreal Canadiens", "Datestr": "5:00 pm"},
+    {"Home": "Dallas Stars", "Away": "St. Lewis Blues", "Datestr": "6:00 pm"},
+    {"Home": "Colorado Avalanche", "Away": "Nashville Predators", "Datestr": "7:00 pm"},
+    {"Home": "Calgary Flames", "Away": "Florida Panthers", "Datestr": "8:00 pm"},
+    {"Home": "Vancouver Canucks", "Away": "Boston Bruins", "Datestr": "8:00 pm"},
+    {"Home": "San Jose Sharks", "Away": "Utah Hockey Club", "Datestr": "8:00 pm"},
+    {"Home": "Seattle Kraken", "Away": "Tampa Bay Lightning", "Datestr": "8:00 pm"}
 ]
+
+app = Flask(__name__)
+
+load_dotenv()
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db = SQLAlchemy(app)
+login_manager = LoginManager(app)
+login_manager.login_view = "login"
+
+class User(UserMixin, db.Model):
+    UserId:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    Username:str = db.Column(db.String(80), unique=True, nullable=False)
+    Password:str = db.Column(db.String(200), nullable=False)
+
+    def get_id(self):
+        return self.UserId
+
+class Bet(db.Model):
+    BetId:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    Category:str = db.Column(db.String(80), nullable=False)
+    Details:str = db.Column(db.String(200), nullable=False)
+    Odds:float = db.Column(db.Float, nullable=False)
+
+class Parlay(db.Model):
+    ParlayId:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    Datetime:dt.datetime = db.Column(db.DateTime, nullable=False)
+    UserId:int = db.Column(db.Integer, db.ForeignKey('user.UserId'), nullable=False)
+    MatchupId:int = db.Column(db.Integer, db.ForeignKey('matchup.MatchupId'), nullable=False)
+    Wager:float = db.Column(db.Float, nullable=False)
+    BetId1:int = db.Column(db.Integer, db.ForeignKey('bet.BetId'), nullable=False)
+    BetId2:int = db.Column(db.Integer, db.ForeignKey('bet.BetId'), nullable=False)
+    BetId3:int = db.Column(db.Integer, db.ForeignKey('bet.BetId'), nullable=False)
+
+class Matchup(db.Model):
+    MatchupId:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    Datetime:dt.datetime = db.Column(db.DateTime, nullable=False)
+    Home:str = db.Column(db.String(80), nullable=False)
+    Away:str = db.Column(db.String(80), nullable=False)
 
 def am_to_dec(am_odds):
     if am_odds > 0:
@@ -34,84 +89,47 @@ def calculate_dec_odds(odds):
 def format_am_odds(odds):
     return f"{('+' if odds > 0 else '')}{round(odds)}"
 
+def calc_parlay_info(raw_odds, wager):
+    dec_odds = calculate_dec_odds(raw_odds)
+    odds = format_am_odds(dec_to_am(dec_odds))
+    percent = round((1 / dec_odds) * 100, 1)
+    payout = round(wager * dec_odds, 2)
+    win = payout - wager
+    return dec_odds, odds, percent, payout, win
+
 class DisplayableUsername:
-    def __init__(self, user, current_user=None):
+    def __init__(self, user:User, current_user=None):
         self.id = user.UserId
         self.username = user.Username if user != current_user else "You"
 
 class DisplayableMatchup:
-    def __init__(self, matchup):
-        self.date = matchup.Datetime.strftime("%m/%d/%Y")
-        self.time = matchup.Datetime.strftime("%I:%M %p")
+    def __init__(self, matchup:Matchup):
+        print(matchup.Datetime.strftime("%I:%M %p"))
+        self.date = matchup.Datetime.astimezone().strftime("%m/%d/%Y")
+        self.time = matchup.Datetime.astimezone().strftime("%I:%M %p")
         self.home = matchup.Home
         self.away = matchup.Away
 
 class DisplayableBet:
-    def __init__(self, bet):
+    def __init__(self, bet:Bet):
         self.category = bet.Category
         self.details = bet.Details
         self.raw_odds = bet.Odds
         self.odds = format_am_odds(bet.Odds)
 
 class DisplayableParlay:
-    def __init__(self, parlay, current_user=None):
+    def __init__(self, parlay:Parlay, current_user=None):
         self.user = DisplayableUsername(db.session.get(User, parlay.UserId), current_user)
         self.wager = parlay.Wager
         self.bets = [DisplayableBet(b) for b in db.session.query(Bet).filter(Bet.BetId.in_([parlay.BetId1, parlay.BetId2, parlay.BetId3])).all()]
         self.matchup = DisplayableMatchup(db.session.get(Matchup, parlay.MatchupId))
-        self.dec_odds = calculate_dec_odds([b.raw_odds for b in self.bets])
-        self.odds = format_am_odds(dec_to_am(self.dec_odds))
-        self.percent = round((1 / self.dec_odds) * 100, 1)
-        self.payout = round(self.wager * self.dec_odds, 2)
-        self.win = self.payout - self.wager
+        self.dec_odds, self.odds, self.percent, self.payout, self.win = calc_parlay_info([b.raw_odds for b in self.bets], self.wager)
 
     def __str__(self):
         return f"{self.user.username} bet {self.wager} on {self.matchup.home} vs {self.matchup.away} at {self.matchup.time} on {self.matchup.date}."
     
     def __repr__(self):
         return self.__str__()
-
-app = Flask(__name__)
-
-load_dotenv()
-app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
-
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
-db = SQLAlchemy(app)
-login_manager = LoginManager(app)
-login_manager.login_view = "login"
-
-class User(UserMixin, db.Model):
-    UserId = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    Username = db.Column(db.String(80), unique=True, nullable=False)
-    Password = db.Column(db.String(200), nullable=False)
-
-    def get_id(self):
-        return self.UserId
-
-class Bet(db.Model):
-    BetId = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    Category = db.Column(db.String(80), nullable=False)
-    Details = db.Column(db.String(200), nullable=False)
-    Odds = db.Column(db.Float, nullable=False)
-
-class Parlay(db.Model):
-    ParlayId = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    Datetime = db.Column(db.DateTime, nullable=False)
-    UserId = db.Column(db.Integer, db.ForeignKey('user.UserId'), nullable=False)
-    MatchupId = db.Column(db.Integer, db.ForeignKey('matchup.MatchupId'), nullable=False)
-    Wager = db.Column(db.Float, nullable=False)
-    BetId1 = db.Column(db.Integer, db.ForeignKey('bet.BetId'), nullable=False)
-    BetId2 = db.Column(db.Integer, db.ForeignKey('bet.BetId'), nullable=False)
-    BetId3 = db.Column(db.Integer, db.ForeignKey('bet.BetId'), nullable=False)
-
-class Matchup(db.Model):
-    MatchupId = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    Datetime = db.Column(db.DateTime, nullable=False)
-    Home = db.Column(db.String(80), nullable=False)
-    Away = db.Column(db.String(80), nullable=False)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -120,13 +138,15 @@ def load_user(user_id):
 with app.app_context():
     db.create_all()
 
-    db.session.query(Matchup).delete()
-    db.session.commit()
-
-    for matchup in matchups:
-        new_matchup = Matchup(Datetime=datetime.datetime.now(), Home=matchup["Home"], Away=matchup["Away"])
-        db.session.add(new_matchup)
+    if input("Reset matchups database?").lower() in ["y", "yes"]:
+        db.session.query(Matchup).delete()
         db.session.commit()
+
+    if input("Add matchups?").lower() in ["y", "yes"]:
+        for matchup in matchups:
+            new_matchup = Matchup(Datetime=dt.datetime.strftime("2024-12-14 " + matchup["Datestr"], "%Y-%m-%d %I:%M %p"), Home=matchup["Home"], Away=matchup["Away"])
+            db.session.add(new_matchup)
+            db.session.commit()
 
 def sanitize(s):
     return s.replace("'", "").replace('"', "").replace(";", "")
@@ -179,6 +199,7 @@ def parlays():
 
     return render_template("parlays.html", user=user, dates=[parlays])
 
+
 @app.route("/parlays/new", methods=["GET", "POST"])
 def new_parlay():
 
@@ -202,21 +223,30 @@ def new_parlay():
         if not all([matchup, wager, bet1_category, bet1_details, bet1_odds, bet2_category, bet2_details, bet2_odds, bet3_category, bet3_details, bet3_odds]):
             return render_template("new.html", matchups=Matchup.query.all(), error="Please fill out all the fields")
         
-        bet1 = Bet(Category=bet1_category, Details=bet1_details, Odds=bet1_odds)
-        bet2 = Bet(Category=bet2_category, Details=bet2_details, Odds=bet2_odds)
-        bet3 = Bet(Category=bet3_category, Details=bet3_details, Odds=bet3_odds)
+        try:
+            wager = float(wager)
+            bet1_odds = float(bet1_odds)
+            bet2_odds = float(bet2_odds)
+            bet3_odds = float(bet3_odds)
+            assert not (-100 < bet1_odds < 100 and -100 < bet2_odds < 100 and -100 < bet3_odds < 100), "Odds cannot be between -100 and +100."
+        except (ValueError, AssertionError) as e:
+            print(f"{type(e)}{e}")
+            return render_template("new.html", matchups=Matchup.query.all(), error="Wager and bet odds must be a numbers. Odds cannot be between -100 and 100.")
+        
+        bet1 = Bet(Category=sanitize(bet1_category), Details=sanitize(bet1_details), Odds=bet1_odds)
+        bet2 = Bet(Category=sanitize(bet2_category), Details=sanitize(bet2_details), Odds=bet2_odds)
+        bet3 = Bet(Category=sanitize(bet3_category), Details=sanitize(bet3_details), Odds=bet3_odds)
 
         db.session.add(bet1)
         db.session.add(bet2)
         db.session.add(bet3)
         db.session.commit()
 
-        new_parlay = Parlay(Datetime=datetime.datetime.now(), UserId=user.UserId, MatchupId=matchup, Wager=wager, BetId1=bet1.BetId, BetId2=bet2.BetId, BetId3=bet3.BetId)
+        new_parlay = Parlay(Datetime=dt.datetime.now(), UserId=user.UserId, MatchupId=matchup, Wager=wager, BetId1=bet1.BetId, BetId2=bet2.BetId, BetId3=bet3.BetId)
         db.session.add(new_parlay)
         db.session.commit()
         return redirect(url_for("parlays"))
     else:
-        bets = Bet.query.all()
         return render_template("new.html", matchups=Matchup.query.all())
 
 @app.route("/logout")
