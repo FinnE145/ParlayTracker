@@ -22,11 +22,11 @@
                     <div id="collapse-{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ loop.index }}" data-bs-parent="#parlaysAccordion">
                         <div class="accordion-body">
                             {% for bet in parlay.bets %}
-                                <div class="text-bg-secondary rounded p-2 mb-1 d-inline-block">{{ bet.category }}: {{ bet.details }} at {{ bet.odds }}</div>
+                                <div class="border border-secondary rounded p-2 mb-1 d-inline-block">{{ bet.category }}: {{ bet.details }} at {{ bet.odds }}</div>
                                 <br>
                             {% endfor %}
-                            <div class="d-sm-inline-block text-bg-{% if parlay.dec_odds > 2 %}danger{% else %}success{% endif %} rounded p-2">Total odds: {{ parlay.odds }} ({{ parlay.percent }}%)</div>
-                            <div class="d-sm-inline-block text-bg-success rounded p-2">To win: ${{ parlay.win | round(2) }}</div>
+                            Total odds: <div class="d-sm-inline-block border border-primary rounded p-2">{{ parlay.odds }} ({{ parlay.percent }}%)</div>
+                            To win: <div class="d-sm-inline-block border border-success rounded p-2">${{ parlay.win | round(2) }}</div>
                         </div>
                     </div>
                 </div>
