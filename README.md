@@ -19,9 +19,11 @@ Upcoming Features:
 - Automatic bet options, odds, and success updating
 
 Parlay tracking/viewing:
+
 ![image](https://github.com/user-attachments/assets/d70245a5-815a-455f-81b0-d6c123a30b09)
 
 Parlay creation and editing:
+
 ![image](https://github.com/user-attachments/assets/218b23a4-4483-4047-81c4-5e4d4b313604)
 
 > Note: Currently league creation is closed for maintenence, meaning if you do not already have a league join code, you can only view live parlays from a sample league of real players.
