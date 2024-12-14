@@ -312,11 +312,12 @@ if __name__ == "__main__":
 
     app.run(debug=True)
 else:
-    db.session.query(Matchup).delete()
-    db.session.commit()
-
-    for matchup in matchups:
-        new_matchup = Matchup(Datetime=dt.datetime.strptime("2024-12-14 " + matchup["Datestr"], "%Y-%m-%d %I:%M %p"), Home=matchup["Home"], Away=matchup["Away"])
-        db.session.add(new_matchup)
+    with app.app_context():
+        db.session.query(Matchup).delete()
         db.session.commit()
+
+        for matchup in matchups:
+            new_matchup = Matchup(Datetime=dt.datetime.strptime("2024-12-14 " + matchup["Datestr"], "%Y-%m-%d %I:%M %p"), Home=matchup["Home"], Away=matchup["Away"])
+            db.session.add(new_matchup)
+            db.session.commit()
     
