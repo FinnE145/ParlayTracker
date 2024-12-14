@@ -121,6 +121,7 @@ class DisplayableBet:
 
 class DisplayableParlay:
     def __init__(self, parlay:Parlay, current_user=None):
+        self.id = parlay.ParlayId
         self.user = DisplayableUsername(db.session.get(User, parlay.UserId), current_user)
         self.wager = parlay.Wager
         self.bets = [DisplayableBet(b) for b in db.session.query(Bet).filter(Bet.BetId.in_([parlay.BetId1, parlay.BetId2, parlay.BetId3])).all()]
@@ -188,7 +189,10 @@ def parlays():
         user = current_user
 
     parlays = [DisplayableParlay(p, current_user) for p in Parlay.query.group_by(Parlay.Datetime).all()]
-    print(parlays)
+    #print(parlays)
+    """ for parlay in parlays:
+        for bet in parlay.bets:
+            print(bet.success) """
 
     return render_template("parlays.html", user=user, dates=[parlays])
 
@@ -223,7 +227,7 @@ def new_parlay():
             bet3_odds = float(bet3_odds)
             assert not (-100 < bet1_odds < 100 and -100 < bet2_odds < 100 and -100 < bet3_odds < 100), "Odds cannot be between -100 and +100."
         except (ValueError, AssertionError) as e:
-            print(f"{type(e)}{e}")
+            #print(f"{type(e)}{e}")
             return render_template("new.html", matchups=Matchup.query.all(), error="Wager and bet odds must be a numbers. Odds cannot be between -100 and 100.")
         
         if wager <= 0:
@@ -252,28 +256,37 @@ def new_parlay():
     else:
         return render_template("new.html", matchups=Matchup.query.all())
     
-@app.route("/parlays/status/", methods=["POST"])
+@app.route("/parlays/status", methods=["POST"])
 @login_required
 def update_parlay_status():
-    bet_id = request.args.get("id")
-    success = request.args.get("status")
+    data = request.get_json()
+    bet_id = data.get("id")
+    success = data.get("success")
+
+    #print(f"Attemping to update bet {bet_id} to {success}")
 
     try:
         bet_id = int(bet_id)
     except ValueError:
+        #print("Invalid bet id")
         return "Invalid bet id", 400
-
-    if not all([bet_id, success]):
-        return "Missing data", 400
     
     success = None if success == "N" else success == "T"
 
-    parlay = Parlay.query.filter_by(ParlayId=bet_id).first()
-    if not parlay:
-        return "Parlay not found", 404
+    bet = Bet.query.filter_by(BetId=bet_id).first()
+    if not bet:
+        return "Bet not found", 404
     
-    parlay.Bet.Success = success
+    parlay = Parlay.query.filter((Parlay.BetId1 == bet_id) | (Parlay.BetId2 == bet_id) | (Parlay.BetId3 == bet_id)).first()
+    if parlay.UserId != current_user.UserId:
+        return "Unauthorized", 403
+    
+    #print(f"Updating bet {bet_id} to {success}")
+    
+    bet.Success = success
     db.session.commit()
+
+    return "Success", 200
 
 @app.route("/logout")
 @login_required
