@@ -11,7 +11,7 @@
                         <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ loop.index }}" aria-expanded="true" aria-controls="collapse-{{ loop.index }}">
                             <span class="text-primary">{{ parlay.user.username }}</span>
                             <span class="text-body mx-1">bet</span>
-                            <span class="text-success">${{ parlay.wager }}</span>
+                            <span class="text-success">${{ "%0.2f" % parlay.wager }}</span>
                             <span class="text-body mx-1">on</span>
                             <span class="text-primary">{{ parlay.matchup.away }} @ {{ parlay.matchup.home }}</span>
                             <span class="text-body ms-1">(</span>
@@ -26,7 +26,7 @@
                                 <br>
                             {% endfor %}
                             Total odds: <div class="d-sm-inline-block border border-primary rounded p-2">{{ parlay.odds }} ({{ parlay.percent }}%)</div>
-                            To win: <div class="d-sm-inline-block border border-success rounded p-2">${{ parlay.win | round(2) }}</div>
+                            To win: <div class="d-sm-inline-block border border-success rounded p-2">${{ "%0.2f" % parlay.win }}</div>
                         </div>
                     </div>
                 </div>
