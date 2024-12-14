@@ -54,6 +54,7 @@ class Bet(db.Model):
     Category:str = db.Column(db.String(80), nullable=False)
     Details:str = db.Column(db.String(200), nullable=False)
     Odds:float = db.Column(db.Float, nullable=False)
+    Success:bool = db.Column(db.Boolean, nullable=True)
 
 class Parlay(db.Model):
     ParlayId:int = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -111,10 +112,12 @@ class DisplayableMatchup:
 
 class DisplayableBet:
     def __init__(self, bet:Bet):
+        self.id = bet.BetId
         self.category = bet.Category
         self.details = bet.Details
         self.raw_odds = bet.Odds
         self.odds = format_am_odds(bet.Odds)
+        self.success = bet.Success
 
 class DisplayableParlay:
     def __init__(self, parlay:Parlay, current_user=None):
@@ -123,6 +126,7 @@ class DisplayableParlay:
         self.bets = [DisplayableBet(b) for b in db.session.query(Bet).filter(Bet.BetId.in_([parlay.BetId1, parlay.BetId2, parlay.BetId3])).all()]
         self.matchup = DisplayableMatchup(db.session.get(Matchup, parlay.MatchupId))
         self.dec_odds, self.odds, self.percent, self.payout, self.win = calc_parlay_info([b.raw_odds for b in self.bets], self.wager)
+        self.success = None if None in (sl:=[b.success for b in self.bets]) else all(sl:=[b.success for b in self.bets])
 
     def __str__(self):
         return f"{self.user.username} bet {self.wager} on {self.matchup.home} vs {self.matchup.away} at {self.matchup.time} on {self.matchup.date}."
@@ -247,6 +251,29 @@ def new_parlay():
         return redirect(url_for("parlays"))
     else:
         return render_template("new.html", matchups=Matchup.query.all())
+    
+@app.route("/parlays/status/", methods=["POST"])
+@login_required
+def update_parlay_status():
+    bet_id = request.args.get("id")
+    success = request.args.get("status")
+
+    try:
+        bet_id = int(bet_id)
+    except ValueError:
+        return "Invalid bet id", 400
+
+    if not all([bet_id, success]):
+        return "Missing data", 400
+    
+    success = None if success == "N" else success == "T"
+
+    parlay = Parlay.query.filter_by(ParlayId=bet_id).first()
+    if not parlay:
+        return "Parlay not found", 404
+    
+    parlay.Bet.Success = success
+    db.session.commit()
 
 @app.route("/logout")
 @login_required
@@ -256,11 +283,11 @@ def logout():
 
 if __name__ == "__main__":
     with app.app_context():
-        if input("Reset matchups database?").lower() in ["y", "yes"]:
+        if input("Reset matchups database? ").lower() in ["y", "yes"]:
             db.session.query(Matchup).delete()
             db.session.commit()
 
-        if input("Add matchups?").lower() in ["y", "yes"]:
+        if input("Add matchups? ").lower() in ["y", "yes"]:
             for matchup in matchups:
                 new_matchup = Matchup(Datetime=dt.datetime.strptime("2024-12-14 " + matchup["Datestr"], "%Y-%m-%d %I:%M %p"), Home=matchup["Home"], Away=matchup["Away"])
                 db.session.add(new_matchup)
