@@ -21,7 +21,7 @@
                 <label for="wager" class="form-label">Wager:</label>
                 <div class="input-group">
                     <span class="input-group-text">$</span>
-                    <input type="number" class="form-control" id="wager" name="wager" value="5" required>
+                    <input type="number" class="form-control" id="wager" name="wager" min="0" value="5" required>
                 </div>
         </div>
     </div>
@@ -35,7 +35,7 @@
             </div>
             <div class="col-md-5">
                 <label for="bet{{ i+1 }}_details" class="form-label">Bet {{ i+1 }} Details:</label>
-                <input type="text" class="form-control" id="bet{{ i+1 }}_details" name="bet{{ i+1 }}_details" placeholder="{{ placeholders[1] }}">
+                <input type="text" class="form-control" id="bet{{ i+1 }}_details" name="bet{{ i+1 }}_details" placeholder="{{ placeholders[1] }}" required>
             </div>
             <div class="col-md-2">
                 <label for="bet{{ i+1 }}_odds" class="form-label">Bet {{ i+1 }} Odds:</label>
