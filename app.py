@@ -104,7 +104,6 @@ class DisplayableUsername:
 
 class DisplayableMatchup:
     def __init__(self, matchup:Matchup):
-        print(matchup.Datetime.strftime("%I:%M %p"))
         self.date = matchup.Datetime.astimezone().strftime("%m/%d/%Y")
         self.time = matchup.Datetime.astimezone().strftime("%I:%M %p")
         self.home = matchup.Home
@@ -226,7 +225,11 @@ def new_parlay():
         if wager <= 0:
             return render_template("new.html", matchups=Matchup.query.all(), error="Wager must be greater than 0.")
         
-        if Matchup.query.filter_by(MatchupId = matchup).first().Datetime < dt.datetime.now():
+        localtz = dt.timezone(dt.timedelta(hours=-7))
+        matchup_time = Matchup.query.filter_by(MatchupId = matchup).first().Datetime.astimezone(localtz)
+        current_time = dt.datetime.now(localtz)
+        #print(matchup_time, current_time)
+        if matchup_time < current_time:
             return render_template("new.html", matchups=Matchup.query.all(), error="Matchup has already started.")
         
         bet1 = Bet(Category=sanitize(bet1_category), Details=sanitize(bet1_details), Odds=bet1_odds)
@@ -263,9 +266,9 @@ if __name__ == "__main__":
                 db.session.add(new_matchup)
                 db.session.commit()
 
-            new_matchup = Matchup(Datetime=dt.datetime.strptime("2024-12-13 11:00 am", "%Y-%m-%d %I:%M %p"), Home="Old Test", Away="Old Test")
+            """ new_matchup = Matchup(Datetime=dt.datetime.strptime("2024-12-13 11:00 am", "%Y-%m-%d %I:%M %p"), Home="Old Test", Away="Old Test")
             db.session.add(new_matchup)
-            db.session.commit()
+            db.session.commit() """
 
     app.run(debug=True)
 
