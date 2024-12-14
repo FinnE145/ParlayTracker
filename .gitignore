@@ -162,3 +162,7 @@ cython_debug/
 # vscode
 .vscode/
 .hintrc
+
+# Test
+test/
+test.*
