@@ -10,13 +10,12 @@
         {{ error }}
     </div>
     {% endif %}
-    ParlayId: {{ parlay.matchup.id }}
     <div class="row mb-3">
         <div class="col-md-8">
             <label for="matchup" class="form-label">Matchup:</label>
             <select class="form-control selectpicker bg-dark" required data-style="bg-dark border" id="matchup" name="matchup" data-live-search="true">
                 {% for matchup in matchups %}
-                    <option value="{{ matchup.MatchupId }}" data-tokens="{{ matchup.Home }} {{ matchup.Away }}" {% if parlay.matchup.id == matchup.MatchupId %}selected{% endif %}>{{ matchup.Away }} @ {{ matchup.Home }} ({{ matchup.MatchupId }})</option>
+                    <option value="{{ matchup.MatchupId }}" data-tokens="{{ matchup.Home }} {{ matchup.Away }}" {% if parlay.matchup.id == matchup.MatchupId %}selected{% endif %}>{{ matchup.Away }} @ {{ matchup.Home }}</option>
                 {% endfor %}
             </select>
         </div>
