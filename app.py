@@ -210,7 +210,7 @@ def new_parlay():
         bet3_odds = request.form.get("bet3_odds")
 
         if not all([matchup_id, wager, bet1_category, bet1_details, bet1_odds, bet2_category, bet2_details, bet2_odds, bet3_category, bet3_details, bet3_odds]):
-            return render_template("new.html", matchups=Matchup.query.all(), error="Please fill out all the fields")
+            return render_template("new.html", matchups=Matchup.query.filter(Matchup.Datetime > dt.datetime.now(dt.timezone.utc)).all(), error="Please fill out all the fields")
         
         try:
             wager = float(wager)
@@ -225,10 +225,9 @@ def new_parlay():
         if wager <= 0:
             return render_template("new.html", matchups=Matchup.query.all(), error="Wager must be greater than 0.")
         
-        mst = pytz.timezone("US/Mountain")
         matchup = Matchup.query.filter_by(MatchupId = matchup_id).first()
-        matchup_time = matchup.Datetime.astimezone(mst)
-        current_time = dt.datetime.now(mst)
+        matchup_time = matchup.Datetime
+        current_time = dt.datetime.now(dt.timezone.utc)
         print(f"Creating parlay: {user.Username}, {matchup.Away} @ {matchup.Home},", matchup_time, current_time)
         if matchup_time < current_time:
             return render_template("new.html", matchups=Matchup.query.all(), error="Matchup has already started.")
@@ -276,7 +275,7 @@ def edit_parlay(parlay_id):
         bet3_odds = request.form.get("bet3_odds")
 
         if not all([matchup_id, wager, bet1_category, bet1_details, bet1_odds, bet2_category, bet2_details, bet2_odds, bet3_category, bet3_details, bet3_odds]):
-            return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay, error="Please fill out all the fields")
+            return render_template("edit.html", matchups=Matchup.query.filter(Matchup.Datetime > dt.datetime.now(dt.timezone.utc)).all(), parlay=disParlay, error="Please fill out all the fields")
         
         try:
             wager = float(wager)
@@ -291,10 +290,9 @@ def edit_parlay(parlay_id):
         if wager <= 0:
             return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay, error="Wager must be greater than 0.")
         
-        mst = pytz.timezone("US/Mountain")
         matchup = Matchup.query.filter_by(MatchupId = matchup_id).first()
-        matchup_time = matchup.Datetime.astimezone(mst)
-        current_time = dt.datetime.now(mst)
+        matchup_time = matchup.Datetime
+        current_time = dt.datetime.now(dt.timezone.utc)
         print(f"Creating parlay: {user.Username}, {matchup.Away} @ {matchup.Home},", matchup_time, current_time)
         if matchup_time < current_time:
             return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay, error="Matchup has already started.")
