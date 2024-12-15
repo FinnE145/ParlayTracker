@@ -269,6 +269,8 @@ def edit_parlay(parlay_id):
         user = current_user
         if not user:
             return redirect(url_for("login"))
+        if user.UserId != disParlay.user.id:
+            return "Unauthorized", 403
 
         matchup_id = request.form.get("matchup")
         wager = request.form.get("wager")
