@@ -26,7 +26,7 @@ matchups = [
 ]
 
 with app.app_context():
-        if input("Would you like to clear existing matchups? (y/N): ") == "y":
+        if input("Would you like to clear existing matchups? (y/N): ").lower() in ["y", "yes"]:
             db.session.query(Matchup).delete()
             db.session.commit()
 
