@@ -21,7 +21,7 @@ matchups = [
     {"Home": "Washington Capitals", "Away": "Buffalo Sabres", "Datestr": "5:00 pm"},
     {"Home": "Columbus Blue Jackets", "Away": "Anaheim Ducks", "Datestr": "5:00 pm"},
     {"Home": "Winnipeg Jets", "Away": "Montreal Canadiens", "Datestr": "5:00 pm"},
-    {"Home": "Dallas Stars", "Away": "St. Lewis Blues", "Datestr": "6:00 pm"},
+    {"Home": "Dallas Stars", "Away": "St. Louis Blues", "Datestr": "6:00 pm"},
     {"Home": "Colorado Avalanche", "Away": "Nashville Predators", "Datestr": "7:00 pm"},
     {"Home": "Calgary Flames", "Away": "Florida Panthers", "Datestr": "8:00 pm"},
     {"Home": "Vancouver Canucks", "Away": "Boston Bruins", "Datestr": "8:00 pm"},
@@ -213,7 +213,7 @@ def new_parlay():
         if not user:
             return redirect(url_for("login"))
 
-        matchup = request.form.get("matchup")
+        matchup_id = request.form.get("matchup")
         wager = request.form.get("wager")
         bet1_category = request.form.get("bet1_category")
         bet1_details = request.form.get("bet1_details")
@@ -225,7 +225,7 @@ def new_parlay():
         bet3_details = request.form.get("bet3_details")
         bet3_odds = request.form.get("bet3_odds")
 
-        if not all([matchup, wager, bet1_category, bet1_details, bet1_odds, bet2_category, bet2_details, bet2_odds, bet3_category, bet3_details, bet3_odds]):
+        if not all([matchup_id, wager, bet1_category, bet1_details, bet1_odds, bet2_category, bet2_details, bet2_odds, bet3_category, bet3_details, bet3_odds]):
             return render_template("new.html", matchups=Matchup.query.all(), error="Please fill out all the fields")
         
         try:
@@ -242,12 +242,12 @@ def new_parlay():
             return render_template("new.html", matchups=Matchup.query.all(), error="Wager must be greater than 0.")
         
         localtz = dt.timezone(dt.timedelta(hours=-7))
-        matchup_time = Matchup.query.filter_by(MatchupId = matchup).first().Datetime.astimezone(localtz)
+        matchup = Matchup.query.filter_by(MatchupId = matchup_id).first()
+        matchup_time = matchup.Datetime.astimezone(localtz)
         current_time = dt.datetime.now(localtz)
-        print(matchup_time, current_time)
+        print(f"Creating parlay: {user.Username}, {matchup.Away} @ {matchup.Home},", matchup_time, current_time)
         if matchup_time < current_time:
-            pass
-            #return render_template("new.html", matchups=Matchup.query.all(), error="Matchup has already started.")
+            return render_template("new.html", matchups=Matchup.query.all(), error="Matchup has already started.")
         
         bet1 = Bet(Category=sanitize(bet1_category), Details=sanitize(bet1_details), Odds=bet1_odds)
         bet2 = Bet(Category=sanitize(bet2_category), Details=sanitize(bet2_details), Odds=bet2_odds)
@@ -258,7 +258,7 @@ def new_parlay():
         db.session.add(bet3)
         db.session.commit()
 
-        new_parlay = Parlay(Datetime=dt.datetime.now(), UserId=user.UserId, MatchupId=matchup, Wager=wager, BetId1=bet1.BetId, BetId2=bet2.BetId, BetId3=bet3.BetId)
+        new_parlay = Parlay(Datetime=dt.datetime.now(), UserId=user.UserId, MatchupId=matchup_id, Wager=wager, BetId1=bet1.BetId, BetId2=bet2.BetId, BetId3=bet3.BetId)
         db.session.add(new_parlay)
         db.session.commit()
         return redirect(url_for("parlays"))
@@ -279,7 +279,7 @@ def edit_parlay(parlay_id):
         if not user:
             return redirect(url_for("login"))
 
-        matchup = request.form.get("matchup")
+        matchup_id = request.form.get("matchup")
         wager = request.form.get("wager")
         bet1_category = request.form.get("bet1_category")
         bet1_details = request.form.get("bet1_details")
@@ -291,7 +291,7 @@ def edit_parlay(parlay_id):
         bet3_details = request.form.get("bet3_details")
         bet3_odds = request.form.get("bet3_odds")
 
-        if not all([matchup, wager, bet1_category, bet1_details, bet1_odds, bet2_category, bet2_details, bet2_odds, bet3_category, bet3_details, bet3_odds]):
+        if not all([matchup_id, wager, bet1_category, bet1_details, bet1_odds, bet2_category, bet2_details, bet2_odds, bet3_category, bet3_details, bet3_odds]):
             return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay, error="Please fill out all the fields")
         
         try:
@@ -308,12 +308,12 @@ def edit_parlay(parlay_id):
             return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay, error="Wager must be greater than 0.")
         
         localtz = dt.timezone(dt.timedelta(hours=-7))
-        matchup_time = Matchup.query.filter_by(MatchupId = matchup).first().Datetime.astimezone(localtz)
+        matchup = Matchup.query.filter_by(MatchupId = matchup_id).first()
+        matchup_time = matchup.Datetime.astimezone(localtz)
         current_time = dt.datetime.now(localtz)
-        print(matchup_time, current_time)
+        print(f"Creating parlay: {user.Username}, {matchup.Away} @ {matchup.Home},", matchup_time, current_time)
         if matchup_time < current_time:
-            pass
-            #return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay, error="Matchup has already started.")
+            return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay, error="Matchup has already started.")
         
         bet1 = Bet(Category=sanitize(bet1_category), Details=sanitize(bet1_details), Odds=bet1_odds)
         bet2 = Bet(Category=sanitize(bet2_category), Details=sanitize(bet2_details), Odds=bet2_odds)
@@ -326,7 +326,7 @@ def edit_parlay(parlay_id):
 
         parlay = Parlay.query.filter_by(ParlayId=parlay_id).first()
         old_parlay = DisplayableParlay(parlay)
-        parlay.MatchupId = matchup
+        parlay.MatchupId = matchup_id
         parlay.Wager = wager
         parlay.BetId1 = bet1.BetId
         parlay.BetId2 = bet2.BetId
@@ -336,7 +336,11 @@ def edit_parlay(parlay_id):
         with open("edits.log", "a") as f:
             f.write(f"""
 {dt.datetime.now().astimezone().strftime('%m/%d/%Y %I:%M %p')} - {user.Username} edited parlay {parlay_id}.
-Matchup: {matchup}
+Matchup: {old_parlay.matchup.id} ({old_parlay.matchup.away} @ {old_parlay.matchup.home}) -> {matchup_id} ({matchup.Away} @ {matchup.Home})
+Wager: {old_parlay.wager} -> {wager}
+Bet 1: {old_parlay.bets[0].category}: {old_parlay.bets[0].details} ({old_parlay.bets[0].raw_odds}) -> {bet1_category}: {bet1_details} ({bet1_odds})
+Bet 2: {old_parlay.bets[1].category}: {old_parlay.bets[1].details} ({old_parlay.bets[1].raw_odds}) -> {bet2_category}: {bet2_details} ({bet2_odds})
+Bet 3: {old_parlay.bets[2].category}: {old_parlay.bets[2].details} ({old_parlay.bets[2].raw_odds}) -> {bet3_category}: {bet3_details} ({bet3_odds})
 """)
 
         return redirect(url_for("parlays"))
@@ -404,7 +408,7 @@ else:
         db.session.commit()
 
         for matchup in matchups:
-            new_matchup = Matchup(Datetime=dt.datetime.strptime("2024-12-14 " + matchup["Datestr"], "%Y-%m-%d %I:%M %p"), Home=matchup["Home"], Away=matchup["Away"])
+            new_matchup = Matchup(Datetime=dt.datetime.strptime("2024-12-14 " + matchup["Datestr"], "%Y-%m-%d %I:%M %p").astimezone(dt.timezone.utc), Home=matchup["Home"], Away=matchup["Away"])
             db.session.add(new_matchup)
             db.session.commit()
     
