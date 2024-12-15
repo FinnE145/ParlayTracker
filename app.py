@@ -191,6 +191,7 @@ def parlays():
 
 @app.route("/parlays/new", methods=["GET", "POST"])
 def new_parlay():
+    matchups = Matchup.query.filter(Matchup.Datetime > dt.datetime.now(dt.timezone.utc)).all()
 
     if request.method == "POST":
         user = current_user
@@ -210,7 +211,7 @@ def new_parlay():
         bet3_odds = request.form.get("bet3_odds")
 
         if not all([matchup_id, wager, bet1_category, bet1_details, bet1_odds, bet2_category, bet2_details, bet2_odds, bet3_category, bet3_details, bet3_odds]):
-            return render_template("new.html", matchups=Matchup.query.filter(Matchup.Datetime > dt.datetime.now(dt.timezone.utc)).all(), error="Please fill out all the fields")
+            return render_template("new.html", matchups=matchups, error="Please fill out all the fields")
         
         try:
             wager = float(wager)
@@ -220,17 +221,17 @@ def new_parlay():
             assert not (-100 < bet1_odds < 100 and -100 < bet2_odds < 100 and -100 < bet3_odds < 100), "Odds cannot be between -100 and +100."
         except (ValueError, AssertionError) as e:
             #print(f"{type(e)}{e}")
-            return render_template("new.html", matchups=Matchup.query.all(), error="Wager and bet odds must be a numbers. Odds cannot be between -100 and 100.")
+            return render_template("new.html", matchups=matchups, error="Wager and bet odds must be a numbers. Odds cannot be between -100 and 100.")
         
         if wager <= 0:
-            return render_template("new.html", matchups=Matchup.query.all(), error="Wager must be greater than 0.")
+            return render_template("new.html", matchups=matchups, error="Wager must be greater than 0.")
         
         matchup = Matchup.query.filter_by(MatchupId = matchup_id).first()
         matchup_time = matchup.Datetime
         current_time = dt.datetime.now(dt.timezone.utc)
         print(f"Creating parlay: {user.Username}, {matchup.Away} @ {matchup.Home},", matchup_time, current_time)
         if matchup_time < current_time:
-            return render_template("new.html", matchups=Matchup.query.all(), error="Matchup has already started.")
+            return render_template("new.html", matchups=matchups, error="Matchup has already started.")
         
         bet1 = Bet(Category=sanitize(bet1_category), Details=sanitize(bet1_details), Odds=bet1_odds)
         bet2 = Bet(Category=sanitize(bet2_category), Details=sanitize(bet2_details), Odds=bet2_odds)
@@ -246,14 +247,16 @@ def new_parlay():
         db.session.commit()
         return redirect(url_for("parlays"))
     else:
-        return render_template("new.html", matchups=Matchup.query.all())
+        return render_template("new.html", matchups=matchups)
     
 @app.route("/parlays/edit/<int:parlay_id>", methods=["GET", "POST"])
 def edit_parlay(parlay_id):
+    matchups = Matchup.query.filter(Matchup.Datetime > dt.datetime.now(dt.timezone.utc)).all()
+
     try:
         parlay_id = int(parlay_id)
     except ValueError:
-        return render_template("edit.html", matchups=Matchup.query.all(), parlay=DisplayableParlay(Parlay.query.filter_by(ParlayId=parlay_id).first()), error="Invalid parlay id.")
+        return render_template("new.html", matchups=matchups, error="Invalid parlay id.")
     
     disParlay = DisplayableParlay(Parlay.query.filter_by(ParlayId=parlay_id).first())
 
@@ -275,7 +278,7 @@ def edit_parlay(parlay_id):
         bet3_odds = request.form.get("bet3_odds")
 
         if not all([matchup_id, wager, bet1_category, bet1_details, bet1_odds, bet2_category, bet2_details, bet2_odds, bet3_category, bet3_details, bet3_odds]):
-            return render_template("edit.html", matchups=Matchup.query.filter(Matchup.Datetime > dt.datetime.now(dt.timezone.utc)).all(), parlay=disParlay, error="Please fill out all the fields")
+            return render_template("edit.html", matchups=matchups, parlay=disParlay, error="Please fill out all the fields")
         
         try:
             wager = float(wager)
@@ -285,17 +288,17 @@ def edit_parlay(parlay_id):
             assert not (-100 < bet1_odds < 100 and -100 < bet2_odds < 100 and -100 < bet3_odds < 100), "Odds cannot be between -100 and +100."
         except (ValueError, AssertionError) as e:
             #print(f"{type(e)}{e}")
-            return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay, error="Wager and bet odds must be a numbers. Odds cannot be between -100 and 100.")
+            return render_template("edit.html", matchups=matchups, parlay=disParlay, error="Wager and bet odds must be a numbers. Odds cannot be between -100 and 100.")
         
         if wager <= 0:
-            return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay, error="Wager must be greater than 0.")
+            return render_template("edit.html", matchups=matchups, parlay=disParlay, error="Wager must be greater than 0.")
         
         matchup = Matchup.query.filter_by(MatchupId = matchup_id).first()
         matchup_time = matchup.Datetime
         current_time = dt.datetime.now(dt.timezone.utc)
         print(f"Creating parlay: {user.Username}, {matchup.Away} @ {matchup.Home},", matchup_time, current_time)
         if matchup_time < current_time:
-            return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay, error="Matchup has already started.")
+            return render_template("edit.html", matchups=matchups, parlay=disParlay, error="Matchup has already started.")
         
         bet1 = Bet(Category=sanitize(bet1_category), Details=sanitize(bet1_details), Odds=bet1_odds)
         bet2 = Bet(Category=sanitize(bet2_category), Details=sanitize(bet2_details), Odds=bet2_odds)
@@ -327,7 +330,7 @@ Bet 3: {old_parlay.bets[2].category}: {old_parlay.bets[2].details} ({old_parlay.
 
         return redirect(url_for("parlays"))
     else:
-        return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay)
+        return render_template("edit.html", matchups=matchups, parlay=disParlay)
     
 @app.route("/parlays/status", methods=["POST"])
 @login_required
