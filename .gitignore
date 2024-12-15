@@ -163,6 +163,9 @@ cython_debug/
 .vscode/
 .hintrc
 
+# Logs
+*.log
+
 # Test
 test/
 test.*
