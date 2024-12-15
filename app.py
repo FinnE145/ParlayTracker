@@ -106,9 +106,10 @@ class DisplayableUsername:
 
 class DisplayableMatchup:
     def __init__(self, matchup:Matchup):
+        mst = pytz.timezone("US/Mountain")
         self.id = matchup.MatchupId
-        self.date = matchup.Datetime.astimezone().strftime("%m/%d/%Y")
-        self.time = matchup.Datetime.astimezone().strftime("%I:%M %p")
+        self.date = matchup.Datetime.astimezone(mst).strftime("%m/%d/%Y")
+        self.time = matchup.Datetime.astimezone(mst).strftime("%I:%M %p")
         self.home = matchup.Home
         self.away = matchup.Away
 
@@ -242,10 +243,10 @@ def new_parlay():
         if wager <= 0:
             return render_template("new.html", matchups=Matchup.query.all(), error="Wager must be greater than 0.")
         
-        localtz = dt.timezone(dt.timedelta(hours=-7))
+        mst = pytz.timezone("US/Mountain")
         matchup = Matchup.query.filter_by(MatchupId = matchup_id).first()
-        matchup_time = matchup.Datetime.astimezone(localtz)
-        current_time = dt.datetime.now(localtz)
+        matchup_time = matchup.Datetime.astimezone(mst)
+        current_time = dt.datetime.now(mst)
         print(f"Creating parlay: {user.Username}, {matchup.Away} @ {matchup.Home},", matchup_time, current_time)
         if matchup_time < current_time:
             return render_template("new.html", matchups=Matchup.query.all(), error="Matchup has already started.")
@@ -308,10 +309,10 @@ def edit_parlay(parlay_id):
         if wager <= 0:
             return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay, error="Wager must be greater than 0.")
         
-        localtz = dt.timezone(dt.timedelta(hours=-7))
+        mst = pytz.timezone("US/Mountain")
         matchup = Matchup.query.filter_by(MatchupId = matchup_id).first()
-        matchup_time = matchup.Datetime.astimezone(localtz)
-        current_time = dt.datetime.now(localtz)
+        matchup_time = matchup.Datetime.astimezone(mst)
+        current_time = dt.datetime.now(mst)
         print(f"Creating parlay: {user.Username}, {matchup.Away} @ {matchup.Home},", matchup_time, current_time)
         if matchup_time < current_time:
             return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay, error="Matchup has already started.")
@@ -405,7 +406,7 @@ if __name__ == "__main__":
     app.run(debug=True)
 else:
     with app.app_context():
-        db.session.query(Matchup).delete()
+        db.session.query(Matchup).filter_by(MatchupId=2).delete()
         db.session.commit()
 
         mst = pytz.timezone("US/Mountain")
