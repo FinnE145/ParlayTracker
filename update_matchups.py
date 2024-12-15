@@ -11,7 +11,7 @@ matchups = [
 ]
 
 with app.app_context():
-        db.session.query(Matchup).filter_by(MatchupId=2).delete()
+        db.session.query(Matchup).delete()
         db.session.commit()
 
         mst = pytz.timezone("US/Mountain")
