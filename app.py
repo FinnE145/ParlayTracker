@@ -131,7 +131,12 @@ class DisplayableParlay:
         self.success = None if None in (sl:=[b.success for b in self.bets]) else all(sl:=[b.success for b in self.bets])
 
     def __str__(self):
-        return f"{self.user.username} bet {self.wager} on {self.matchup.home} vs {self.matchup.away} at {self.matchup.time} on {self.matchup.date}."
+        return f"""
+{self.user.username} bet {self.wager} on {self.matchup.home} vs {self.matchup.away} at {self.matchup.time} on {self.matchup.date}.
+Bet 1: {self.bets[0].category} - {self.bets[0].details} ({self.bets[0].odds})
+Bet 2: {self.bets[1].category} - {self.bets[1].details} ({self.bets[1].odds})
+Bet 3: {self.bets[2].category} - {self.bets[2].details} ({self.bets[2].odds})
+"""
     
     def __repr__(self):
         return self.__str__()
@@ -168,6 +173,7 @@ def login():
                 flash("Your password was (re)set.", category="success")
             elif check_password_hash(user_record.Password, password):
                 login_user(user_record)
+                print(f"User {user} logged in.")
                 return redirect(url_for("parlays"))
             else:
                 return render_template("login.html", error="Incorrect password.\nIf you were creating a new account, this username is already taken.")
@@ -178,6 +184,7 @@ def login():
             db.session.add(new_user)
             db.session.commit()
             login_user(new_user)
+            print(f"User {user} created.")
             flash(f"Account created with username {user}.", category="success")
             return redirect(url_for("parlays"))
     else:
@@ -237,9 +244,10 @@ def new_parlay():
         localtz = dt.timezone(dt.timedelta(hours=-7))
         matchup_time = Matchup.query.filter_by(MatchupId = matchup).first().Datetime.astimezone(localtz)
         current_time = dt.datetime.now(localtz)
-        #print(matchup_time, current_time)
+        print(matchup_time, current_time)
         if matchup_time < current_time:
-            return render_template("new.html", matchups=Matchup.query.all(), error="Matchup has already started.")
+            pass
+            #return render_template("new.html", matchups=Matchup.query.all(), error="Matchup has already started.")
         
         bet1 = Bet(Category=sanitize(bet1_category), Details=sanitize(bet1_details), Odds=bet1_odds)
         bet2 = Bet(Category=sanitize(bet2_category), Details=sanitize(bet2_details), Odds=bet2_odds)
@@ -302,9 +310,10 @@ def edit_parlay(parlay_id):
         localtz = dt.timezone(dt.timedelta(hours=-7))
         matchup_time = Matchup.query.filter_by(MatchupId = matchup).first().Datetime.astimezone(localtz)
         current_time = dt.datetime.now(localtz)
-        #print(matchup_time, current_time)
+        print(matchup_time, current_time)
         if matchup_time < current_time:
-            return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay, error="Matchup has already started.")
+            pass
+            #return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay, error="Matchup has already started.")
         
         bet1 = Bet(Category=sanitize(bet1_category), Details=sanitize(bet1_details), Odds=bet1_odds)
         bet2 = Bet(Category=sanitize(bet2_category), Details=sanitize(bet2_details), Odds=bet2_odds)
@@ -315,13 +324,21 @@ def edit_parlay(parlay_id):
         db.session.add(bet3)
         db.session.commit()
 
-        old_parlay = Parlay.query.filter_by(ParlayId=parlay_id).first()
-        old_parlay.MatchupId = matchup
-        old_parlay.Wager = wager
-        old_parlay.BetId1 = bet1.BetId
-        old_parlay.BetId2 = bet2.BetId
-        old_parlay.BetId3 = bet3.BetId
+        parlay = Parlay.query.filter_by(ParlayId=parlay_id).first()
+        old_parlay = DisplayableParlay(parlay)
+        parlay.MatchupId = matchup
+        parlay.Wager = wager
+        parlay.BetId1 = bet1.BetId
+        parlay.BetId2 = bet2.BetId
+        parlay.BetId3 = bet3.BetId
         db.session.commit()
+
+        with open("edits.log", "a") as f:
+            f.write(f"""
+{dt.datetime.now().astimezone().strftime('%m/%d/%Y %I:%M %p')} - {user.Username} edited parlay {parlay_id}.
+Matchup: {matchup}
+""")
+
         return redirect(url_for("parlays"))
     else:
         return render_template("edit.html", matchups=Matchup.query.all(), parlay=disParlay)
