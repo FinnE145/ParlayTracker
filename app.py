@@ -8,6 +8,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 import datetime as dt
 from iformat import iprint
 from math import prod
+import pytz
 
 # dt.datetime.now(dt.timezone.utc)
 
@@ -407,8 +408,11 @@ else:
         db.session.query(Matchup).delete()
         db.session.commit()
 
+        mst = pytz.timezone("US/Mountain")
+
         for matchup in matchups:
-            new_matchup = Matchup(Datetime=dt.datetime.strptime("2024-12-14 " + matchup["Datestr"], "%Y-%m-%d %I:%M %p").astimezone(dt.timezone.utc), Home=matchup["Home"], Away=matchup["Away"])
+            datetime = mst.localize(dt.datetime.strptime("2024-12-14 " + matchup["Datestr"], "%Y-%m-%d %I:%M %p"))
+            new_matchup = Matchup(Datetime=datetime.astimezone(dt.timezone.utc), Home=matchup["Home"], Away=matchup["Away"])
             db.session.add(new_matchup)
             db.session.commit()
     
