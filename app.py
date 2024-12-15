@@ -89,9 +89,11 @@ class DisplayableUsername:
 class DisplayableMatchup:
     def __init__(self, matchup:Matchup):
         mst = pytz.timezone("US/Mountain")
+        utc = pytz.timezone("UTC")
         self.id = matchup.MatchupId
-        self.date = matchup.Datetime.astimezone(mst).strftime("%m/%d/%Y")
-        self.time = matchup.Datetime.astimezone(mst).strftime("%I:%M %p")
+        self.date = utc.localize(matchup.Datetime).astimezone(mst).strftime("%h %d")
+        self.time = utc.localize(matchup.Datetime).astimezone(mst).strftime("%I:%M %p")
+        self.passed = matchup.Datetime.astimezone(dt.timezone.utc) < dt.datetime.now(dt.timezone.utc)
         self.home = matchup.Home
         self.away = matchup.Away
 
@@ -180,7 +182,7 @@ def parlays():
     if current_user.is_authenticated:
         user = current_user
 
-    parlays = [DisplayableParlay(p, current_user) for p in Parlay.query.group_by(Parlay.Datetime).all()]
+    parlays = [DisplayableParlay(p, current_user) for p in Parlay.query.order_by(Parlay.Datetime.desc()).all()]
     #print(parlays)
     """ for parlay in parlays:
         for bet in parlay.bets:
@@ -191,7 +193,7 @@ def parlays():
 
 @app.route("/parlays/new", methods=["GET", "POST"])
 def new_parlay():
-    matchups = Matchup.query.filter(Matchup.Datetime > dt.datetime.now(dt.timezone.utc)).all()
+    matchups = [DisplayableMatchup(m) for m in Matchup.query.filter(Matchup.Datetime > dt.datetime.now(dt.timezone.utc)).all()]
 
     if request.method == "POST":
         user = current_user
@@ -226,8 +228,9 @@ def new_parlay():
         if wager <= 0:
             return render_template("new.html", matchups=matchups, error="Wager must be greater than 0.")
         
+        utc = pytz.timezone("UTC")
         matchup = Matchup.query.filter_by(MatchupId = matchup_id).first()
-        matchup_time = matchup.Datetime
+        matchup_time = utc.localize(matchup.Datetime)
         current_time = dt.datetime.now(dt.timezone.utc)
         print(f"Creating parlay: {user.Username}, {matchup.Away} @ {matchup.Home},", matchup_time, current_time)
         if matchup_time < current_time:
@@ -251,7 +254,7 @@ def new_parlay():
     
 @app.route("/parlays/edit/<int:parlay_id>", methods=["GET", "POST"])
 def edit_parlay(parlay_id):
-    matchups = Matchup.query.filter(Matchup.Datetime > dt.datetime.now(dt.timezone.utc)).all()
+    matchups = [DisplayableMatchup(m) for m in Matchup.query.filter(Matchup.Datetime > dt.datetime.now(dt.timezone.utc)).all()]
 
     try:
         parlay_id = int(parlay_id)
@@ -259,6 +262,8 @@ def edit_parlay(parlay_id):
         return render_template("new.html", matchups=matchups, error="Invalid parlay id.")
     
     disParlay = DisplayableParlay(Parlay.query.filter_by(ParlayId=parlay_id).first())
+    if disParlay.matchup.id not in [m.id for m in matchups]:
+        matchups.insert(0, disParlay.matchup)
 
     if request.method == "POST":
         user = current_user
@@ -293,11 +298,12 @@ def edit_parlay(parlay_id):
         if wager <= 0:
             return render_template("edit.html", matchups=matchups, parlay=disParlay, error="Wager must be greater than 0.")
         
+        utc = pytz.timezone("UTC")
         matchup = Matchup.query.filter_by(MatchupId = matchup_id).first()
-        matchup_time = matchup.Datetime
+        matchup_time = utc.localize(matchup.Datetime)
         current_time = dt.datetime.now(dt.timezone.utc)
-        print(f"Creating parlay: {user.Username}, {matchup.Away} @ {matchup.Home},", matchup_time, current_time)
-        if matchup_time < current_time:
+        print(f"Creating parlay: {user.Username}, {matchup.Away} @ {matchup.Home},", matchup_time, current_time, f"MatchupIds: {disParlay.matchup.id} -> {matchup_id}")
+        if disParlay.matchup.id != int(matchup_id) and matchup_time < current_time:
             return render_template("edit.html", matchups=matchups, parlay=disParlay, error="Matchup has already started.")
         
         bet1 = Bet(Category=sanitize(bet1_category), Details=sanitize(bet1_details), Odds=bet1_odds)
