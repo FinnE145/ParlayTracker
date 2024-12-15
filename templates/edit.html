@@ -15,7 +15,7 @@
             <label for="matchup" class="form-label">Matchup:</label>
             <select class="form-control selectpicker bg-dark" required data-style="bg-dark border" id="matchup" name="matchup" data-live-search="true">
                 {% for matchup in matchups %}
-                    <option value="{{ matchup.MatchupId }}" data-tokens="{{ matchup.Home }} {{ matchup.Away }}" {% if parlay.matchup.id == matchup.MatchupId %}selected{% endif %}>{{ matchup.Away }} @ {{ matchup.Home }}</option>
+                    <option value="{{ matchup.id }}" data-tokens="{{ matchup.home }} {{ matchup.away }}" {% if parlay.matchup.id == matchup.id %}selected{% endif %}>{{ matchup.away }} @ {{ matchup.home }} ({{ matchup.date }} {{ matchup.time }})</option>
                 {% endfor %}
             </select>
         </div>
