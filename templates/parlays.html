@@ -5,42 +5,46 @@
 {% block content %}
     <h1>Parlays</h1>
 
-    {% for date in dates %}
-        <div class="accordion" id="parlaysAccordion">
-            {% for parlay in date %}
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="heading-{{ loop.index }}">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ loop.index }}" aria-expanded="true" aria-controls="collapse-{{ loop.index }}">
-                            <span class="text-primary">{{ parlay.user.username }}</span>
-                            <span class="text-body mx-1">bet</span>
-                            <span class="text-success">${{ "%0.2f" % parlay.wager }}</span>
-                            <span class="text-body mx-1">on</span>
-                            <span class="text-primary">{{ parlay.matchup.away }} @ {{ parlay.matchup.home }}</span>
-                            <span class="text-body ms-1">({{ parlay.matchup.date }} {{ parlay.matchup.time }})</span>
-                        </button>
-                    </h2>
-                    <div id="collapse-{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ loop.index }}" data-bs-parent="#parlaysAccordion">
-                        <div class="accordion-body">
-                            {% if current_user.UserId == parlay.user.id %}
-                                <a class="btn btn-outline-primary mb-1" href="/parlays/edit/{{ parlay.id }}">Edit parlay <i class="bi bi-pencil"></i></a>
-                                <br>
-                            {% endif %}
-                            {% for bet in parlay.bets %}
-                                <div id="bet-{{ parlay.id }}-{{ bet.id }}" class="{% if bet.success == None %}border border-secondary{% elif not bet.success %}text-bg-danger{% else %}text-bg-success{% endif %} rounded p-2 mb-1 d-inline-block">{{ bet.category }}: {{ bet.details }} at {{ bet.odds }}</div>
+    {% for date in dates.keys() %}
+        {% set outer = loop.index %}
+        {% if date | length > 0 %}
+            <h4 class="mt-3">{{ date }}</h4>
+            <div class="accordion" id="parlaysAccordion-{{ outer }}">
+                {% for parlay in dates[date] %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading-{{ outer }}-{{ loop.index }}">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ outer }}-{{ loop.index }}" aria-expanded="true" aria-controls="collapse-{{ outer }}-{{ loop.index }}">
+                                <span class="text-primary">{{ parlay.user.username }}</span>
+                                <span class="text-body mx-1">bet</span>
+                                <span class="text-success">${{ "%0.2f" % parlay.wager }}</span>
+                                <span class="text-body mx-1">on</span>
+                                <span class="text-primary">{{ parlay.matchup.away }} @ {{ parlay.matchup.home }}</span>
+                                <span class="text-body ms-1">({{ parlay.matchup.date }} {{ parlay.matchup.time }})</span>
+                            </button>
+                        </h2>
+                        <div id="collapse-{{ outer }}-{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ outer }}-{{ loop.index }}" data-bs-parent="#parlaysAccordion-{{ outer }}">
+                            <div class="accordion-body">
                                 {% if current_user.UserId == parlay.user.id %}
-                                    <button type="button" class="btn btn-outline-success ms-1 mb-2 p-1 px-2" onclick="updateBetStatus('{{ parlay.id }}', '{{ bet.id }}', 'T')"><i class="bi bi-check-lg"></i></button>
-                                    <button type="button" class="btn btn-outline-danger ms-1 mb-2 p-1 px-2" onclick="updateBetStatus('{{ parlay.id }}', '{{ bet.id }}', 'F')"><i class="bi bi-x-lg"></i></button>
-                                    <button type="button" class="btn btn-outline-secondary ms-1 mb-2 p-1 px-2" onclick="updateBetStatus('{{ parlay.id }}', '{{ bet.id }}', 'N')"><i class="bi bi-arrow-counterclockwise"></i></button>
+                                    <a class="btn btn-outline-primary mb-1" href="/parlays/edit/{{ parlay.id }}">Edit parlay <i class="bi bi-pencil"></i></a>
+                                    <br>
                                 {% endif %}
-                                <br>
-                            {% endfor %}
-                            Total odds: <div class="d-sm-inline-block border border-primary rounded p-2">{{ parlay.odds }} ({{ parlay.percent }}%)</div>
-                            To win: <div id="win-{{ parlay.id }}" class="d-sm-inline-block {% if parlay.success == None %}border border-secondary{% elif not parlay.success %}text-bg-danger{% else %}text-bg-success{% endif %} rounded p-2">${{ "%0.2f" % parlay.win }}</div>
+                                {% for bet in parlay.bets %}
+                                    <div id="bet-{{ parlay.id }}-{{ bet.id }}" class="{% if bet.success == None %}border border-secondary{% elif not bet.success %}text-bg-danger{% else %}text-bg-success{% endif %} rounded p-2 mb-1 d-inline-block">{{ bet.category }}: {{ bet.details }} at {{ bet.odds }}</div>
+                                    {% if current_user.UserId == parlay.user.id %}
+                                        <button type="button" class="btn btn-outline-success ms-1 mb-2 p-1 px-2" onclick="updateBetStatus('{{ parlay.id }}', '{{ bet.id }}', 'T')"><i class="bi bi-check-lg"></i></button>
+                                        <button type="button" class="btn btn-outline-danger ms-1 mb-2 p-1 px-2" onclick="updateBetStatus('{{ parlay.id }}', '{{ bet.id }}', 'F')"><i class="bi bi-x-lg"></i></button>
+                                        <button type="button" class="btn btn-outline-secondary ms-1 mb-2 p-1 px-2" onclick="updateBetStatus('{{ parlay.id }}', '{{ bet.id }}', 'N')"><i class="bi bi-arrow-counterclockwise"></i></button>
+                                    {% endif %}
+                                    <br>
+                                {% endfor %}
+                                Total odds: <div class="d-sm-inline-block border border-primary rounded p-2">{{ parlay.odds }} ({{ parlay.percent }}%)</div>
+                                To win: <div id="win-{{ parlay.id }}" class="d-sm-inline-block {% if parlay.success == None %}border border-secondary{% elif not parlay.success %}text-bg-danger{% else %}text-bg-success{% endif %} rounded p-2">${{ "%0.2f" % parlay.win }}</div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            {% endfor %}
-        </div>
+                {% endfor %}
+            </div>
+        {% endif %}
     {% endfor %}
 {% endblock %}
 

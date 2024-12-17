@@ -183,12 +183,20 @@ def parlays():
         user = current_user
 
     parlays = [DisplayableParlay(p, current_user) for p in Parlay.query.order_by(Parlay.Datetime.desc()).all()]
+    dateParlays = {}
+    for p in parlays:
+        if p.matchup.date not in dateParlays:
+            dateParlays[p.matchup.date] = []
+        dateParlays[p.matchup.date].append(p)
+
+    iprint(dateParlays)
+
     #print(parlays)
     """ for parlay in parlays:
         for bet in parlay.bets:
             print(bet.success) """
 
-    return render_template("parlays.html", user=user, dates=[parlays])
+    return render_template("parlays.html", user=user, dates=dateParlays)
 
 
 @app.route("/parlays/new", methods=["GET", "POST"])
