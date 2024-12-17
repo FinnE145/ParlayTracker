@@ -16,9 +16,7 @@
                             <span class="text-success">${{ "%0.2f" % parlay.wager }}</span>
                             <span class="text-body mx-1">on</span>
                             <span class="text-primary">{{ parlay.matchup.away }} @ {{ parlay.matchup.home }}</span>
-                            <span class="text-body ms-1">(</span>
-                            <span class="text-primary">{{ parlay.matchup.date }} {{ parlay.matchup.time }}</span>
-                            <span class="text-body">)</span>
+                            <span class="text-body ms-1">({{ parlay.matchup.date }} {{ parlay.matchup.time }})</span>
                         </button>
                     </h2>
                     <div id="collapse-{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ loop.index }}" data-bs-parent="#parlaysAccordion">
