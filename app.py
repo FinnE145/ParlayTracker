@@ -189,7 +189,7 @@ def parlays():
             dateParlays[p.matchup.date] = []
         dateParlays[p.matchup.date].append(p)
 
-    iprint(dateParlays)
+    #iprint(dateParlays)
 
     #print(parlays)
     """ for parlay in parlays:
