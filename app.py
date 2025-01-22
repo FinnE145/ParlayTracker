@@ -10,6 +10,8 @@ from iformat import iprint
 from math import prod
 import pytz
 
+from get_matchups import get_matchups, get_matchup_count
+
 # dt.datetime.now(dt.timezone.utc)
 
 app = Flask(__name__)
@@ -127,6 +129,25 @@ Bet 3: {self.bets[2].category} - {self.bets[2].details} ({self.bets[2].odds})
     def __repr__(self):
         return self.__str__()
 
+def update_matchups():
+    todays_date = dt.date.today()
+    finland_tz = pytz.timezone("Europe/Helsinki")
+    mst = pytz.timezone("US/Mountain")
+    finland_now = dt.datetime.now(finland_tz)
+    todays_date = finland_now.astimezone(mst).date()
+    mst = pytz.timezone("US/Mountain")
+    today_start = dt.datetime.combine(todays_date, dt.time.min).replace(tzinfo=mst).astimezone(pytz.utc)
+    today_end = dt.datetime.combine(todays_date, dt.time.max).replace(tzinfo=mst).astimezone(pytz.utc)
+    
+    matchups_today = Matchup.query.filter(Matchup.Datetime >= today_start,
+                                          Matchup.Datetime <= today_end).all()
+
+    if len(matchups_today) < get_matchup_count(todays_date):
+        for m in get_matchups(todays_date):
+            nm = Matchup(Datetime=m["datetime"], Home=m["homeTeam"], Away=m["awayTeam"])
+            db.session.add(nm)
+        db.session.commit()
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.filter_by(UserId=user_id).first()
@@ -178,6 +199,8 @@ def login():
 
 @app.route("/parlays")
 def parlays():
+    update_matchups()
+
     user = None
     if current_user.is_authenticated:
         user = current_user
@@ -201,6 +224,8 @@ def parlays():
 
 @app.route("/parlays/new", methods=["GET", "POST"])
 def new_parlay():
+    update_matchups()
+
     matchups = [DisplayableMatchup(m) for m in Matchup.query.filter(Matchup.Datetime > dt.datetime.now(dt.timezone.utc)).all()]
 
     if request.method == "POST":
