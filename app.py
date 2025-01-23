@@ -187,6 +187,8 @@ def login():
         elif sanitize(password) != password:
                 return render_template("login.html", error="Passwords may not contain '\";.")
         else:
+            flash("Account creation is unavailable at this time.", category="warning")
+            return redirect(url_for("parlays"))
             new_user = User(Username=user, Password=generate_password_hash(password))
             db.session.add(new_user)
             db.session.commit()
